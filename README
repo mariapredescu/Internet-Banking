@@ -1,0 +1,92 @@
+PREDESCU Maria 
+324CB
+--------------------------------------TEMA2PC----------------------------------
+---------------------------------Internet Banking------------------------------
+
+In rezolvarea acestei teme am pornit de la scheletul de cod din laboratorul 8.
+Astfel tema contine doua fisiere: server.c si client.c. Pentru a crea cele 
+doua executalbile aferente fisierelor C se ruleaza make.
+pentru a dechide serverul se ruleaza ./server <port_server> <users_data_file>,
+iar pentru a deschide un nou client si a-l conecta la server se ruleaza
+./client <ip_server> <port_server>.
+
+1.) server.c
+
+Mai intai au fost procesate datele din fisierul cu posibili useri. A fost creata
+o structura pentru fiecare user care sa contina numele, prenumele, numarul de
+card, pinul, parola si soldul. Apoi au fost citite datele tuturor userilor si
+stocate intr-un vector de structuri de tipul decris mai devreme.
+
+De asemenea am folosit o structura in care pentru fiecare user se retine ultimul
+socket pe care a incercat sa se autentifice si rezultatul autentificarii (1 
+daca autentificarea s-a realizat cu succes si -1 de fiecare data cand se 
+introduce pinul gresit - daca valoarea este -3 cardul este blocat).
+
+Apoi s-a creat un socket de tip TCP pentru server pe care se asteapta cereri de 
+conexiune de la clienti.
+
+QUIT - Singura comanda pe care o poate primi de la tastatura serverul este quit.
+Daca este primita aceasta comanda, clientii conectati la server sunt anuntati de 
+inchiderea acestuia, urmand ca ei sa se inchida, iar apoi este inchis si serverul.
+
+Daca cererea de conexiune a unui client a fost acceptata, atunci acesta poate
+trimite la server o serie de comenzi:
+
+	LOGIN - Mai intai se verifica daca pe clientul respectiv mai este autentificat
+	alt user. Daca clientul este ocupat se intoarce mesajul de eroare -2 (Sesiune 
+	deja deschisa), daca nu, se verifica credentialele primite la comanda de login.
+	Daca numarul cardului nu corespunde cu al niciunui user din baza de date se
+	trimite la client mesaj de eroare -4 (Numar card inexistent), iar daca pinul
+	este gresit se intoarce mesaj de eroare -3 (Pin gresit) si se decrementeaza
+	campul structurii in care se retine situatia autentificarii. Daca acest camp
+	este -3 insemana ca pinul a fost introdus gresit de 3 ori consecutiv intr-o 
+	sesiune si cardul este blocat. Daca si numarul de card si pinul sunt corecte,
+	iar loged este mai mare decat -3, userul se poate conecta la server pe clientul
+	curent. Daca se incerca logarea cu alt cont pe clientul curent, se reseteaza
+	la 0 campul loged pentru ceilalti useri care au mai incercat sa se autentifice
+	pe acest client fara succes pentru a se bloca un card doar in momentul in care
+	se introduce gresit pinul de 3 ori consecutiv.
+
+	LOGOUT - Se verifica daca pe clientul respectiv este autentificat un user.
+	Daca nu este autentificat niciun user se trimite la client cod de eroare
+	-1 (Clientul nu a fost autentificat). Daca un user este autentificat pe
+	acel client se deconecteaza, resetandu-se totii vectorii (vectorul de logare,
+	vectorul de ocupare a socketului si vectorul de in care se retine socketul
+	pe care este logat un user), precum si structura locked.
+
+	LISTSOLD - Se verifica daca este un user autentificat pe clientul respectiv.
+	Daca nu, se trimite cod de eroare -1 (Clientul nu a fost autentificat).
+	Daca este logat se trimite la client mesaj cu valoarea soldului.
+
+	TRANSFER - Daca este autentificat se verifica daca numarul de card la care
+	se doreste sa se faca transferul este valid. Daca nu, se intoarce cod de 
+	eroare -4 (Numar card inexistent). Daca este valid, se verifica daca in
+	contul din care se doreste sa se faca transferul sunt fonduri suficiente.
+	Daca sunt, se retine suma de trnsferat si faptul ca userul doreste sa faca
+	un transfer (1 in vectorul trans) si se cere confirmarea transferului, altfel
+	se trimite codul de eroare -8 (Fonduri insufuciente).
+	Se asteapta confirmarea de la client, iar daca raspunsul incepe cu y se 
+	realizeaza transferul, altfel se trimite cod de eroare -9 (Operatie anulata).
+
+2.) client.c
+
+Initial se dechide un socket de tip TCP pentru client ce este conectat la sever.
+Daca serverul nu este deschis se printeaza o eroare de conectare. Ulterior se 
+creeaza fisierul de log al clientului ce contine in nume ID-ul procesului
+prin care a fost creat.
+
+Comenzile specifice clientului sunt citite de la tastatura, scrise in fisierul 
+de log si trimise la server pentru a fi rezolvate, apoi se asteapta raspunsul 
+de la server pentru comanda respectiva. 
+
+Daca comanda citita este quit clientul va trimite la server mesajul quit si se va
+inchide.
+
+Daca clientul primeste de la server mesajul Server-ul se va inchide, inseamna ca 
+serverul se va inchide si se inchide si clientul.
+
+NOTA!
+In testare am folosit un fisier din care am citit useri si am incercat manual sa 
+deschid un server la care sunt conectati mai multi clienti si sa trimit mai 
+multe comenzi. Astfel, nu stiu daca am acoperit toate cazurile posibile ce pot
+interveni pentru o comanda. Sper ca cele la care m-am gandit eu sa fie suficiente.
